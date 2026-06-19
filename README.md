@@ -49,7 +49,7 @@ El bot usa la API de Claude de Anthropic para interpretar mensajes naturales en 
 
 ## Configuración y uso
 
-1. Cloná o copiá el repositorio en tu servidor.
+1. Clona o copia el repositorio en tu servidor.
 
 2. Crea un archivo `.env` en la raíz del proyecto con las variables necesarias:
 
@@ -62,13 +62,13 @@ SONARR_API_KEY=tu_api_key_de_sonarr
 
 3. Ajusta los valores de zona horaria si es necesario en `docker-compose.yml` (`TZ=America/Bogota`).
 
-4. Levantá el stack:
+4. Inicia el stack:
 
 ```bash
 docker compose up -d
 ```
 
-5. Verificá que los servicios estén corriendo:
+5. Verifica que los servicios estén corriendo:
 
 - `http://localhost:8080` para qBittorrent
 - `http://localhost:9696` para Prowlarr
@@ -76,15 +76,15 @@ docker compose up -d
 - `http://localhost:8989` para Sonarr
 - `http://localhost:8191` para Flaresolverr
 
-6. Iniciá el bot de Telegram automáticamente con el servicio `telegram-bot`.
+6. Inicia el bot de Telegram automáticamente con el servicio `telegram-bot`.
 
 ## Cómo usar el bot
 
-Abrí el chat del bot en Telegram y escribí comandos en lenguaje natural. Ejemplos:
+Abre el chat del bot en Telegram y escribe comandos en lenguaje natural. Ejemplos:
 
 - "Quiero ver Oppenheimer"
-- "Descargá Breaking Bad"
-- "Buscá la última película de Nolan"
+- "Descarga Breaking Bad"
+- "Busca la última película de Nolan"
 - "Necesito el episodio S02E05 de The Witcher"
 
 El bot interpreta la intención, busca resultados y ejecuta las acciones necesarias en Radarr o Sonarr.
@@ -113,4 +113,4 @@ El bot interpreta la intención, busca resultados y ejecuta las acciones necesar
 
 ## Licencia
 
-Este proyecto no incluye una licencia explícita. Agregá una licencia si querés compartirlo públicamente.
+Este proyecto se publica bajo la licencia MIT, lo que permite a cualquiera descargarlo, usarlo, modificarlo y distribuirlo libremente.
