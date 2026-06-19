@@ -104,13 +104,6 @@ El bot interpreta la intención, busca resultados y ejecuta las acciones necesar
 - Las descargas se gestionan a través de Radarr y Sonarr, por lo que es necesario tenerlos correctamente configurados con root folders y perfiles de calidad en su propia interfaz.
 - La configuración de descargas y el comportamiento de indexadores se define en Prowlarr y en las propias aplicaciones de Radarr/Sonarr.
 
-## Mejoras sugeridas
-
-- agregar documentación de perfiles de calidad y root folders en Radarr/Sonarr
-- incluir un archivo `docker-compose.override.yml` para personalizaciones locales
-- añadir validaciones más robustas de variables de entorno en el bot
-- implementar mensajes de ayuda (`/help`) en Telegram
-
 ## Licencia
 
 Este proyecto se publica bajo la licencia MIT, lo que permite a cualquiera descargarlo, usarlo, modificarlo y distribuirlo libremente.
