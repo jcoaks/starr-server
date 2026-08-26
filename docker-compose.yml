@@ -98,14 +98,9 @@ services:
       - 8191:8191
     restart: unless-stopped
   warp:
-    image: caomingjun/warp:latest
+    image: peyman29/warp-plus:latest
     container_name: warp
     restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
-    environment:
-      - WARP_SLEEP=2
+    command: ["--cfon", "--country", "US", "-b", "0.0.0.0:1080"]
     ports:
-      - 1080:1080    # SOCKS5 proxy
-    volumes:
-      - ./config/warp:/var/lib/cloudflare-warp
+      - 1080:1080    # SOCKS5 proxy (salida forzada por EE.UU. vía Psiphon)
