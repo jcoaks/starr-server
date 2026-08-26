@@ -101,6 +101,6 @@ services:
     image: peyman29/warp-plus:latest
     container_name: warp
     restart: unless-stopped
-    command: ["--cfon", "--country", "US", "-b", "0.0.0.0:1080"]
+    command: ["-4", "--cfon", "--country", "US", "-b", "0.0.0.0:1080"]
     ports:
       - 1080:1080    # SOCKS5 proxy (salida forzada por EE.UU. vía Psiphon)
