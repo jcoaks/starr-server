@@ -111,8 +111,15 @@ def search_series(query: str) -> list[dict]:
     ]
 
 
-def add_series(tvdb_id: int, quality_profile_id: int = 1) -> str:
-    """Agrega una serie a Sonarr para descarga."""
+def add_series(tvdb_id: int, quality_profile_id: int = 1, only_future: bool = False) -> str:
+    """Agrega una serie a Sonarr para descarga.
+
+    only_future=True se usa cuando el usuario pidió un episodio puntual: asume que
+    ya vio lo anterior, así que solo monitorea episodios futuros (no busca ni
+    descarga el catálogo pasado). El episodio puntual pedido se descarga aparte
+    con download_episode, que lo monitorea y busca explícitamente sin importar
+    este ajuste.
+    """
     lookup = http.get(
         f"{SONARR_URL}/api/v3/series/lookup",
         params={"term": f"tvdb:{tvdb_id}"},
@@ -134,7 +141,10 @@ def add_series(tvdb_id: int, quality_profile_id: int = 1) -> str:
         "rootFolderPath": root_path,
         "monitored": True,
         "seasonFolder": True,
-        "addOptions": {"searchForMissingEpisodes": True},
+        "addOptions": {
+            "monitor": "future" if only_future else "all",
+            "searchForMissingEpisodes": not only_future,
+        },
     }
 
     resp = http.post(
@@ -145,6 +155,11 @@ def add_series(tvdb_id: int, quality_profile_id: int = 1) -> str:
     if resp.status_code == 400 and "already been added" in resp.text.lower():
         return f"'{series_data['title']}' ya está en tu biblioteca."
     resp.raise_for_status()
+    if only_future:
+        return (
+            f"'{series_data['title']}' agregada. Solo se monitorean episodios futuros "
+            "(no se va a descargar lo ya emitido, salvo el episodio puntual que pidas aparte)."
+        )
     return f"'{series_data['title']}' agregada. Sonarr buscará y descargará automáticamente."
 
 def search_episode(tvdb_id: int, season: int, episode: int) -> dict:
@@ -281,7 +296,16 @@ TOOLS = [
                 "tvdb_id": {
                     "type": "integer",
                     "description": "TVDB ID de la serie",
-                }
+                },
+                "only_future": {
+                    "type": "boolean",
+                    "description": (
+                        "True cuando el usuario pidió un episodio puntual y la serie "
+                        "todavía no estaba agregada (se asume que ya vio los episodios "
+                        "anteriores): solo monitorea y descarga episodios futuros, no el "
+                        "catálogo pasado. False (default) cuando pidió la serie completa."
+                    ),
+                },
             },
             "required": ["tvdb_id"],
         },
@@ -341,9 +365,12 @@ Flujo para series completas:
 Flujo para episodios específicos:
 1. Si el usuario pide un capítulo puntual (ej: "S02E05 de Breaking Bad")
 2. Primero buscá la serie con search_series
-3. Si la serie no está agregada, usá add_series primero
+3. Si la serie no está agregada, usá add_series con only_future=true (asumimos que
+   ya vio los episodios anteriores, así que no se descarga el catálogo pasado,
+   solo lo que salga de ahí en adelante)
 4. Después usá search_episode con el tvdb_id, temporada y episodio
-5. Confirmá con el usuario y usá download_episode
+5. Confirmá con el usuario y usá download_episode (esto descarga el episodio
+   puntual sin importar el ajuste only_future)
 
 Reglas:
 - Respondé siempre en español
@@ -408,7 +435,10 @@ def process_with_claude(chat_id: int, user_message: str) -> str:
                 elif tool_name == "search_series":
                     result = search_series(tool_input["query"])
                 elif tool_name == "add_series":
-                    result = add_series(tool_input["tvdb_id"])
+                    result = add_series(
+                        tool_input["tvdb_id"],
+                        only_future=tool_input.get("only_future", False),
+                    )
                 elif tool_name == "search_episode":
                     result = search_episode(
                         tool_input["tvdb_id"],
