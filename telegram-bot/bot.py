@@ -394,14 +394,40 @@ def get_history(chat_id: int) -> list:
 
 # ── Procesar con Claude ───────────────────────────────────
 
+def trim_history(history: list) -> None:
+    """Recorta el historial a MAX_HISTORY sin partir pares tool_use/tool_result.
+
+    El historial tiene que empezar con un mensaje de texto del usuario: si el
+    corte deja al principio un tool_result (cuyo tool_use quedó afuera), la API
+    responde 400 "unexpected tool_use_id".
+    """
+    if len(history) <= MAX_HISTORY:
+        return
+    start = len(history) - MAX_HISTORY
+    while start < len(history) and not (
+        history[start]["role"] == "user" and isinstance(history[start]["content"], str)
+    ):
+        start += 1
+    history[:] = history[start:]
+
+
 def process_with_claude(chat_id: int, user_message: str) -> str:
     history = get_history(chat_id)
+    turn_start = len(history)
     history.append({"role": "user", "content": user_message})
 
-    # Mantener historial limitado
-    if len(history) > MAX_HISTORY:
-        history[:] = history[-MAX_HISTORY:]
+    try:
+        return _run_turn(history)
+    except Exception:
+        # Deshacer el turno incompleto para no dejar el historial corrupto
+        # (ej. un tool_use sin su tool_result)
+        del history[turn_start:]
+        raise
+    finally:
+        trim_history(history)
 
+
+def _run_turn(history: list) -> str:
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=1024,
