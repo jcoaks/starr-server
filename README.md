@@ -58,6 +58,7 @@ TELEGRAM_BOT_TOKEN=tu_token_de_telegram
 ANTHROPIC_API_KEY=tu_api_key_de_anthropic
 RADARR_API_KEY=tu_api_key_de_radarr
 SONARR_API_KEY=tu_api_key_de_sonarr
+PLEX_TOKEN=tu_token_de_plex   # opcional, para preguntar qué hay en Plex
 ```
 
 3. Ajusta los valores de zona horaria si es necesario en `docker-compose.yml` (`TZ=America/Bogota`).
@@ -86,6 +87,7 @@ Abre el chat del bot en Telegram y escribe comandos en lenguaje natural. Ejemplo
 - "Descarga Breaking Bad"
 - "Busca la última película de Nolan"
 - "Necesito el episodio S02E05 de The Witcher"
+- "¿Tengo Oppenheimer en Plex?" / "¿Tengo el S03E04 de Dark?"
 
 El bot interpreta la intención, busca resultados y ejecuta las acciones necesarias en Radarr o Sonarr.
 
@@ -97,6 +99,8 @@ El bot interpreta la intención, busca resultados y ejecuta las acciones necesar
 - `SONARR_API_KEY` - clave de API para Sonarr
 - `RADARR_URL` - URL interna de Radarr en el stack (por defecto `http://radarr:7878`)
 - `SONARR_URL` - URL interna de Sonarr en el stack (por defecto `http://sonarr:8989`)
+- `PLEX_TOKEN` - token de Plex (opcional); sin él, el bot no puede consultar qué hay en la biblioteca. Se obtiene abriendo "Ver XML" de cualquier item en Plex Web y copiando el valor de `X-Plex-Token` de la URL
+- `PLEX_URL` - URL de Plex (por defecto `http://host.docker.internal:32400`, porque Plex corre en el host, fuera de Docker)
 
 ## Notas importantes
 

@@ -21,6 +21,9 @@ RADARR_URL = os.environ.get("RADARR_URL", "http://radarr:7878")
 RADARR_API_KEY = os.environ["RADARR_API_KEY"]
 SONARR_URL = os.environ.get("SONARR_URL", "http://sonarr:8989")
 SONARR_API_KEY = os.environ["SONARR_API_KEY"]
+# Plex corre en el host Windows, fuera de Docker. Sin token, check_plex queda desactivado.
+PLEX_URL = os.environ.get("PLEX_URL", "http://host.docker.internal:32400")
+PLEX_TOKEN = os.environ.get("PLEX_TOKEN", "")
 
 client = anthropic.Anthropic(
     http_client=httpx.Client(
@@ -242,9 +245,83 @@ def download_episode(episode_id: int) -> str:
     return f"Buscando descarga para S{ep_data['seasonNumber']:02d}E{ep_data['episodeNumber']:02d} '{ep_data.get('title', '')}'. Sonarr te notificará cuando esté listo."
 
 
+# ── Funciones de Plex ──────────────────────────────────────
+
+def plex_get(path: str, **params) -> dict:
+    resp = http.get(
+        f"{PLEX_URL}{path}",
+        params=params,
+        headers={"X-Plex-Token": PLEX_TOKEN, "Accept": "application/json"},
+    )
+    resp.raise_for_status()
+    return resp.json().get("MediaContainer", {})
+
+
+def check_plex(query: str, season: int | None = None, episode: int | None = None) -> dict:
+    """Busca en la biblioteca de Plex si ya hay una película o serie.
+
+    Con season/episode, además dice si ese episodio puntual está disponible.
+    """
+    if not PLEX_TOKEN:
+        return {"error": "Plex no está configurado (falta PLEX_TOKEN)."}
+
+    container = plex_get("/hubs/search", query=query, limit=10)
+    movies, shows = [], []
+    for hub in container.get("Hub", []):
+        for item in hub.get("Metadata", []):
+            if item.get("type") == "movie":
+                movies.append({"title": item["title"], "year": item.get("year")})
+            elif item.get("type") == "show":
+                shows.append({
+                    "title": item["title"],
+                    "year": item.get("year"),
+                    "seasons": item.get("childCount"),
+                    "episodes": item.get("leafCount"),
+                    "ratingKey": item["ratingKey"],
+                })
+
+    if season is not None and episode is not None:
+        for show in shows:
+            leaves = plex_get(f"/library/metadata/{show['ratingKey']}/allLeaves")
+            show["requested_episode_available"] = any(
+                ep.get("parentIndex") == season and ep.get("index") == episode
+                for ep in leaves.get("Metadata", [])
+            )
+
+    for show in shows:
+        del show["ratingKey"]
+    return {"movies": movies, "shows": shows, "found": bool(movies or shows)}
+
+
 # ── Definición de tools para Claude ────────────────────────
 
 TOOLS = [
+    {
+        "name": "check_plex",
+        "description": (
+            "Revisa si una película o serie ya está en la biblioteca de Plex (lista "
+            "para ver). Para series dice cuántas temporadas/episodios hay; si se pasan "
+            "season y episode, dice si ese episodio puntual está disponible."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Título de la película o serie",
+                },
+                "season": {
+                    "type": "integer",
+                    "description": "Temporada (opcional, solo para un episodio puntual)",
+                },
+                "episode": {
+                    "type": "integer",
+                    "description": "Episodio (opcional, solo para un episodio puntual)",
+                },
+            },
+            "required": ["query"],
+        },
+    },
     {
         "name": "search_movie",
         "description": "Busca películas por nombre. Usar cuando el usuario quiere una película.",
@@ -372,6 +449,13 @@ Flujo para episodios específicos:
 5. Confirmá con el usuario y usá download_episode (esto descarga el episodio
    puntual sin importar el ajuste only_future)
 
+Consultar la biblioteca:
+- Si el usuario pregunta si ya tiene algo (ej: "¿tengo Oppenheimer?", "¿está
+  The Office en Plex?", "¿tengo el S03E04 de Dark?"), usá check_plex
+- Si no está, ofrecé descargarlo con los flujos de arriba
+- Antes de descargar algo, revisá con check_plex si ya está en Plex y avisá
+  si es así
+
 Reglas:
 - Respondé siempre en español
 - Sé conciso, esto es un chat de Telegram
@@ -454,7 +538,13 @@ def _run_turn(history: list) -> str:
             logger.info(f"Tool call: {tool_name}({tool_input})")
 
             try:
-                if tool_name == "search_movie":
+                if tool_name == "check_plex":
+                    result = check_plex(
+                        tool_input["query"],
+                        tool_input.get("season"),
+                        tool_input.get("episode"),
+                    )
+                elif tool_name == "search_movie":
                     result = search_movie(tool_input["query"])
                 elif tool_name == "add_movie":
                     result = add_movie(tool_input["tmdb_id"])
