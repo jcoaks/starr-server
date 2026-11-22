@@ -62,7 +62,7 @@ PLEX_TOKEN=tu_token_de_plex   # opcional, para preguntar qué hay en Plex
 CLAUDE_API_TOKEN=un_secreto_largo   # opcional, para el servicio claude-api
 ```
 
-3. Ajusta los valores de zona horaria si es necesario en `docker-compose.yml` (`TZ=America/Bogota`).
+3. Ajusta los valores de zona horaria si es necesario en `docker-compose.yml` (`TZ=America/Caracas`) y las carpetas de medios y descargas (`/srv/data/...`).
 
 4. Inicia el stack:
 

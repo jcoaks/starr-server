@@ -9,11 +9,11 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=America/Bogota          # Ajustá a tu zona horaria
+      - TZ=America/Caracas          # Ajustá a tu zona horaria
       - WEBUI_PORT=8080
     volumes:
       - ./config/qbittorrent:/config
-      - ./downloads:/downloads
+      - /srv/data/torrents:/downloads
     ports:
       - 8080:8080       # Web UI
       - 6881:6881       # Torrent port
@@ -29,7 +29,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=America/Bogota
+      - TZ=America/Caracas
     volumes:
       - ./config/prowlarr:/config
     ports:
@@ -45,11 +45,11 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=America/Bogota
+      - TZ=America/Caracas
     volumes:
       - ./config/radarr:/config
-      - ./media/movies:/movies
-      - ./downloads:/downloads
+      - /srv/data/media/movies:/movies
+      - /srv/data/torrents:/downloads
     ports:
       - 7878:7878       # Web UI
     restart: unless-stopped
@@ -63,11 +63,11 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=America/Bogota
+      - TZ=America/Caracas
     volumes:
       - ./config/sonarr:/config
-      - ./media/tv:/tv
-      - ./downloads:/downloads
+      - /srv/data/media/tv:/tv
+      - /srv/data/torrents:/downloads
     ports:
       - 8989:8989       # Web UI
     restart: unless-stopped
@@ -77,6 +77,8 @@ services:
   # ============================================
   telegram-bot:
     build: ./telegram-bot
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     container_name: telegram-bot
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
@@ -110,7 +112,7 @@ services:
     image: ghcr.io/flaresolverr/flaresolverr:latest
     container_name: flaresolverr
     environment:
-      - TZ=America/Bogota
+      - TZ=America/Caracas
     ports:
       - 8191:8191
     restart: unless-stopped
@@ -120,4 +122,4 @@ services:
     restart: unless-stopped
     command: ["-4", "--cfon", "--country", "US", "-b", "0.0.0.0:1080"]
     ports:
-      - 1080:1080    # SOCKS5 proxy (salida forzada por EE.UU. vía Psiphon)
+      - 127.0.0.1:1080:1080    # SOCKS5 proxy (salida forzada por EE.UU. vía Psiphon)
