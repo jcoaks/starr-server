@@ -91,6 +91,21 @@ services:
       - radarr
       - sonarr
     restart: unless-stopped
+  # ============================================
+  # CLAUDE API — Puente para que otros servicios (ej. wan-monitor) le pidan
+  # mensajes a Claude saliendo por warp. Ver claude-api/server.py.
+  # ============================================
+  claude-api:
+    build: ./claude-api
+    container_name: claude-api
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_API_TOKEN=${CLAUDE_API_TOKEN}
+    ports:
+      - 8787:8787       # Solo LAN: no abrir en el router
+    depends_on:
+      - warp
+    restart: unless-stopped
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:latest
     container_name: flaresolverr
