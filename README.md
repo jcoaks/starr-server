@@ -117,23 +117,17 @@ Este proyecto se publica bajo la licencia MIT, lo que permite a cualquiera desca
 ## claude-api: Claude para otros servicios de la casa
 
 Desde esta red Claude solo responde saliendo por `warp`. El servicio
-`claude-api` hace de puente para que otros proyectos (por ejemplo
-wan-monitor) le pidan textos a Claude sin tener API key ni proxy propios:
+`claude-api` hace de puente para que otras apps y servicios de la casa (por
+ejemplo wan-monitor) le pidan textos a Claude con una simple petición HTTP,
+sin API key ni proxy propios:
 
 ```bash
-curl -X POST http://192.168.0.150:8787/ask \
+curl -s -X POST http://plexserver:8787/ask \
   -H "Authorization: Bearer $CLAUDE_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "Decime hola", "effort": "low", "max_tokens": 1024}'
+  -d '{"prompt": "Saluda en una frase corta", "effort": "low"}'
 ```
 
-Responde `{"text": "...", "stop_reason": "...", "request_id": "...", "usage": {...}}`.
-Solo `prompt` es obligatorio; también acepta `system`, `model` (default
-`claude-opus-5-5`), `effort`, `max_tokens` (tope 4096) y `timeout` en
-segundos. Errores: 400 pedido inválido, 401 token incorrecto, 502 error de la
-API o de warp, 504 Claude no respondió a tiempo. Cada pedido es independiente
-(no recuerda conversaciones) y todo se cobra a tu `ANTHROPIC_API_KEY`.
-
-Los contenedores de otro `docker-compose` en esta misma PC lo encuentran en
-`http://host.docker.internal:8787`. Es solo para la red local: no abras ese
-puerto en el router.
+Referencia completa (direcciones, campos, errores, ejemplos en Python y
+JavaScript, y recomendaciones para construir una app encima):
+[claude-api/README.md](claude-api/README.md).
