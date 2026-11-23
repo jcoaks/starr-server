@@ -182,6 +182,11 @@ async function askClaude(prompt, { system, effort = "low", maxTokens = 2048, tim
   "Responde solo con un objeto JSON con las claves ... sin texto alrededor")
   y valida el resultado en tu app: el servicio devuelve texto, no garantiza
   el formato.
+- **Valida la forma del texto si va directo a un usuario.** Con `effort: "low"`
+  el modelo a veces "piensa en voz alta" dentro de la respuesta (escribe un
+  borrador, lo critica y lo reescribe). Dile en `system` que su respuesta se
+  muestra tal cual y que escriba solo la versión final, y descarta respuestas
+  con una forma inesperada (más largas de lo pedido, con saltos de línea, etc.).
 - **Latencia.** Por el salto a través de warp, cuenta con varios segundos por
   respuesta (más con `effort` alto). Usa timeouts generosos (30-60 s) y
   muestra un indicador de "pensando" si hay un usuario esperando.
