@@ -20,6 +20,7 @@ import hmac
 import json
 import logging
 import os
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import anthropic
@@ -38,6 +39,11 @@ DEFAULT_MAX_TOKENS = int(os.environ.get("CLAUDE_DEFAULT_MAX_TOKENS", "1024"))
 MAX_TOKENS_CAP = int(os.environ.get("CLAUDE_MAX_TOKENS_CAP", "4096"))
 DEFAULT_TIMEOUT = float(os.environ.get("CLAUDE_DEFAULT_TIMEOUT", "60"))
 MAX_BODY_BYTES = 200_000
+# warp (Psiphon) has short bad spells where new connections fail instantly
+# with a SOCKS error. Those are retried within the request's own timeout:
+# up to CONNECT_RETRIES more times, CONNECT_RETRY_DELAY seconds apart.
+CONNECT_RETRIES = int(os.environ.get("CLAUDE_CONNECT_RETRIES", "3"))
+CONNECT_RETRY_DELAY = float(os.environ.get("CLAUDE_CONNECT_RETRY_DELAY", "2"))
 EFFORTS = {"low", "medium", "high", "xhigh", "max"}
 
 # max_retries=0: quien llama decide si reintenta; acá un reintento silencioso
@@ -129,20 +135,31 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         caller = self.headers.get("X-Caller", self.client_address[0])
-        try:
-            response = client.with_options(timeout=timeout).messages.create(**params)
-        except anthropic.APITimeoutError:
-            log.warning("[%s] timeout tras %ss (model=%s)", caller, timeout, params["model"])
-            self._reply(504, {"error": "Claude no respondió a tiempo"})
-            return
-        except anthropic.APIStatusError as exc:
-            log.warning("[%s] la API respondió %s: %s", caller, exc.status_code, exc.message)
-            self._reply(502, {"error": f"la API respondió {exc.status_code}", "detail": exc.message})
-            return
-        except anthropic.APIConnectionError as exc:
-            log.warning("[%s] sin conexión con la API: %s", caller, exc)
-            self._reply(502, {"error": "no se pudo conectar con la API (¿warp caído?)"})
-            return
+        deadline = time.monotonic() + timeout
+        attempt = 0
+        while True:
+            try:
+                remaining = deadline - time.monotonic()
+                response = client.with_options(timeout=remaining).messages.create(**params)
+                break
+            except anthropic.APITimeoutError:
+                log.warning("[%s] timeout tras %ss (model=%s)", caller, timeout, params["model"])
+                self._reply(504, {"error": "Claude no respondió a tiempo"})
+                return
+            except anthropic.APIStatusError as exc:
+                log.warning("[%s] la API respondió %s: %s", caller, exc.status_code, exc.message)
+                self._reply(502, {"error": f"la API respondió {exc.status_code}", "detail": exc.message})
+                return
+            except anthropic.APIConnectionError as exc:
+                attempt += 1
+                # Only retry if there's still time for a real attempt after the pause.
+                if attempt <= CONNECT_RETRIES and deadline - time.monotonic() > CONNECT_RETRY_DELAY + 1:
+                    log.info("[%s] sin conexión con la API (intento %d), reintentando: %s", caller, attempt, exc)
+                    time.sleep(CONNECT_RETRY_DELAY)
+                    continue
+                log.warning("[%s] sin conexión con la API tras %d intentos: %s", caller, attempt, exc)
+                self._reply(502, {"error": "no se pudo conectar con la API (¿warp caído?)"})
+                return
 
         # Solo texto: los bloques de thinking vienen vacíos por defecto.
         text = "".join(b.text for b in response.content if b.type == "text").strip()

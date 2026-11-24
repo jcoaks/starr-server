@@ -103,8 +103,11 @@ Todos vienen como JSON con un campo `error` (en español):
 | `502` | Anthropic respondió con error (trae además `detail` con el mensaje original), o no se pudo llegar a Anthropic | `la API respondió 529` / `no se pudo conectar con la API (¿warp caído?)` |
 | `504` | Claude no respondió dentro de `timeout` | `Claude no respondió a tiempo` |
 
-El servicio **no reintenta** por su cuenta: si tu app quiere reintentar un
-`502`/`504`, lo hace ella (con una pausa de unos segundos).
+Si warp falla al conectar (pasa a ratos, aunque no haya cortes), el servicio
+reintenta solo hasta 3 veces, cada 2 s, siempre dentro del `timeout` del
+pedido. Si aun así no conecta, responde `502` "¿warp caído?". No reintenta los
+errores de Anthropic (`502` con `detail`) ni los `504`: si tu app quiere
+reintentarlos, lo hace ella (con una pausa de unos segundos).
 
 ## Ejemplos
 
@@ -222,6 +225,8 @@ Configuración (en el `.env` de starr-server / `docker-compose.yml`):
 | `CLAUDE_MAX_TOKENS_CAP` | `4096` | Tope de `max_tokens` por pedido. |
 | `CLAUDE_DEFAULT_TIMEOUT` | `60` | `timeout` cuando el pedido no lo trae. |
 | `CLAUDE_PROXY` | `socks5://warp:1080` | Proxy de salida hacia Anthropic. |
+| `CLAUDE_CONNECT_RETRIES` | `3` | Reintentos si warp no conecta. |
+| `CLAUDE_CONNECT_RETRY_DELAY` | `2` | Segundos entre esos reintentos. |
 
 Comandos útiles (en `~/starr-server`):
 
